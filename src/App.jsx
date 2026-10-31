@@ -64,10 +64,10 @@ const firebaseMessage = error => {
   return `${code}: ${error?.message || 'Error sin detalles'}`
 }
 
-const sharedPlanUrl = id => {
-  const url = new URL(window.location.href)
+const sharedPlanUrl = (id) => {
+  const url = new URL('https://morf-gamma.vercel.app/')
   url.searchParams.set('plan', id)
-  return url.toString()
+  return url
 }
 
 const times = [
