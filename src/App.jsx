@@ -18,7 +18,8 @@ import {
   deleteDoc,
   onSnapshot,
   query,
-  where
+  where,
+  setDoc
 } from 'firebase/firestore'
 
 const load = (key, fallback) => {
@@ -100,7 +101,16 @@ function App() {
 
   const [favorites, setFavorites] = useState(() => load('favorites', []))
   const [bookings, setBookings] = useState([])
-  const [plans, setPlans] = useState(() => load('plans', []))
+  const [plans, setPlans] = useState([])
+  const [activePlanData, setActivePlanData] = useState(null)
+  const [planVotes, setPlanVotes] = useState([])
+  const [plansLoading, setPlansLoading] = useState(true)
+  const [planLoading, setPlanLoading] = useState(false)
+  const [planError, setPlanError] = useState('')
+  const [savingPlan, setSavingPlan] = useState(false)
+  const [savingVote, setSavingVote] = useState(false)
+  const [closingPlan, setClosingPlan] = useState(false)
+  const [userId, setUserId] = useState(null)
 
   const [activePlan, setActivePlan] = useState(null)
   const [quizStep, setQuizStep] = useState(0)
@@ -136,9 +146,7 @@ function App() {
     localStorage.setItem('morf-favorites', JSON.stringify(favorites))
   }, [favorites])
 
-  useEffect(() => {
-    localStorage.setItem('morf-plans', JSON.stringify(plans))
-  }, [plans])
+  
 
   // FIREBASE: iniciar sesión anónima y escuchar reservas.
   useEffect(() => {
@@ -150,6 +158,7 @@ function App() {
         if (!active) return
 
         setFirebaseReady(true)
+        setUserId(user.uid)
         setFirebaseError('')
 
         const reservasQuery = query(
@@ -185,6 +194,7 @@ function App() {
 
         setFirebaseError(error.code || error.message)
         setBookingsLoading(false)
+        setPlansLoading(false)
       })
 
     return () => {
@@ -192,6 +202,91 @@ function App() {
       unsubscribe()
     }
   }, [])
+
+
+// Escuchar los planes creados por este usuario.
+useEffect(() => {
+  if (!userId) return
+
+  const q = query(
+    collection(db, 'planes'),
+    where('ownerId', '==', userId)
+  )
+
+  const unsubscribe = onSnapshot(
+    q,
+    snapshot => {
+      const data = snapshot.docs.map(item => ({
+        id: item.id,
+        ...item.data()
+      }))
+
+      setPlans(
+        data.sort((a, b) => b.createdAt - a.createdAt)
+      )
+      setPlansLoading(false)
+    },
+    error => {
+      console.error('Error leyendo planes:', error)
+      setPlansLoading(false)
+      notify('No se pudieron cargar los planes.')
+    }
+  )
+
+  return unsubscribe
+}, [userId])
+
+// Escuchar el plan compartido y sus votos en tiempo real.
+useEffect(() => {
+  if (!userId || !activePlan) {
+    setActivePlanData(null)
+    setPlanVotes([])
+    return
+  }
+
+  setPlanLoading(true)
+  setPlanError('')
+  setActivePlanData(null)
+  setPlanVotes([])
+
+  const unsubscribePlan = onSnapshot(
+    doc(db, 'planes', activePlan),
+    snapshot => {
+      setActivePlanData(
+        snapshot.exists()
+          ? { id: snapshot.id, ...snapshot.data() }
+          : null
+      )
+      setPlanLoading(false)
+    },
+    error => {
+      console.error('Error leyendo plan:', error)
+      setPlanError(error.code || error.message)
+      setPlanLoading(false)
+    }
+  )
+
+  const unsubscribeVotes = onSnapshot(
+    collection(db, 'planes', activePlan, 'votos'),
+    snapshot => {
+      setPlanVotes(
+        snapshot.docs.map(item => ({
+          id: item.id,
+          ...item.data()
+        }))
+      )
+    },
+    error => {
+      console.error('Error leyendo votos:', error)
+      setPlanError(error.code || error.message)
+    }
+  )
+
+  return () => {
+    unsubscribePlan()
+    unsubscribeVotes()
+  }
+}, [userId, activePlan])
 
   // Recuperar enlace de un plan de la demo.
   useEffect(() => {
@@ -210,6 +305,9 @@ function App() {
   }
 
   const navigate = next => {
+    if (next !== 'vote' && window.location.search.includes('plan=')) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
     setPage(next)
     setMobile(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -343,70 +441,128 @@ function App() {
     }
   }
 
-  // PLANES: todavía son una demo local.
-  const submitPlan = event => {
-    event.preventDefault()
+// CREAR PLAN EN FIRESTORE.
+const submitPlan = async event => {
+  event.preventDefault()
 
-    if (!planName.trim() || planOptions.length < 2) {
-      notify('Elegí al menos dos restaurantes.')
-      return
-    }
-
-    const plan = {
-      id: newId(),
-      name: planName.trim(),
-      options: planOptions,
-      votes: [],
-      closed: false
-    }
-
-    setPlans(prev => [plan, ...prev])
-    setActivePlan(plan.id)
-    setPlanOptions([])
-    navigate('vote')
-    notify('Plan creado en esta demo.')
+  if (!planName.trim() || planOptions.length < 2) {
+    notify('Elegí al menos dos restaurantes.')
+    return
   }
 
-  const currentPlan = plans.find(p => p.id === activePlan)
+  setSavingPlan(true)
 
-  const vote = event => {
-    event.preventDefault()
+  try {
+    const user = auth.currentUser ?? await iniciarSesionAnonima()
 
-    if (
-      !currentPlan ||
-      currentPlan.closed ||
-      !voterName.trim() ||
-      !voterChoice
-    ) return
-
-    const marker = `morf-voted-${currentPlan.id}`
-
-    if (localStorage.getItem(marker)) {
-      notify('Ya votaste en este navegador.')
-      return
-    }
-
-    setPlans(prev =>
-      prev.map(p =>
-        p.id === currentPlan.id
-          ? {
-              ...p,
-              votes: [
-                ...p.votes,
-                {
-                  id: newId(),
-                  name: voterName.trim(),
-                  restaurantId: voterChoice
-                }
-              ]
-            }
-          : p
-      )
+    const nuevoPlan = await addDoc(
+      collection(db, 'planes'),
+      {
+        name: planName.trim(),
+        options: planOptions,
+        ownerId: user.uid,
+        closed: false,
+        createdAt: Date.now()
+      }
     )
 
-    localStorage.setItem(marker, 'yes')
-    notify('¡Voto registrado en este navegador!')
+    setActivePlan(nuevoPlan.id)
+    window.history.replaceState(
+      {},
+      '',
+      `${window.location.pathname}?plan=${encodeURIComponent(nuevoPlan.id)}`
+    )
+    setPlanOptions([])
+    setVoterName('')
+    setVoterChoice('')
+
+    navigate('vote')
+    notify('¡Plan creado! Ya podés compartirlo.')
+  } catch (error) {
+    console.error('Error creando plan:', error)
+    notify('No se pudo crear el plan.')
+  } finally {
+    setSavingPlan(false)
   }
+}
+
+// Combinar datos del plan con sus votos.
+const currentPlan = activePlanData
+  ? { ...activePlanData, votes: planVotes }
+  : null
+
+const alreadyVoted = planVotes.some(
+  item => item.id === userId
+)
+
+const isPlanOwner = !!(
+  currentPlan &&
+  userId &&
+  currentPlan.ownerId === userId
+)
+
+// VOTAR EN FIRESTORE.
+const vote = async event => {
+  event.preventDefault()
+
+  if (
+    !currentPlan ||
+    currentPlan.closed ||
+    !voterName.trim() ||
+    !currentPlan.options.includes(voterChoice) ||
+    alreadyVoted ||
+    savingVote
+  ) {
+    return
+  }
+
+  setSavingVote(true)
+
+  try {
+    const user = auth.currentUser ?? await iniciarSesionAnonima()
+
+    await setDoc(
+      doc(db, 'planes', currentPlan.id, 'votos', user.uid),
+      {
+        voterId: user.uid,
+        name: voterName.trim(),
+        restaurantId: voterChoice,
+        createdAt: Date.now()
+      }
+    )
+
+    setVoterChoice('')
+    notify('¡Tu voto quedó registrado en Firebase!')
+  } catch (error) {
+    console.error('Error registrando voto:', error)
+    notify('No se pudo registrar el voto o ya habías votado.')
+  } finally {
+    setSavingVote(false)
+  }
+}
+
+// CERRAR VOTACIÓN: solamente el creador.
+const closePlan = async () => {
+  if (!currentPlan || !isPlanOwner || closingPlan) return
+
+  if (!window.confirm('¿Cerrar esta votación?')) return
+
+  setClosingPlan(true)
+
+  try {
+    await updateDoc(
+      doc(db, 'planes', currentPlan.id),
+      { closed: true }
+    )
+
+    notify('Votación cerrada correctamente.')
+  } catch (error) {
+    console.error('Error cerrando plan:', error)
+    notify('No se pudo cerrar la votación.')
+  } finally {
+    setClosingPlan(false)
+  }
+}
 
   const chooseQuiz = choice => {
     const question = questions[quizStep]
@@ -1276,7 +1432,7 @@ function App() {
           </section>
         )}
 
-        {/* CREAR PLAN: DEMO LOCAL */}
+        {/* CREAR PLAN: FIRESTORE */}
         {page === 'plans' && (
           <section className="section page-section">
             <span className="eyebrow">
@@ -1349,8 +1505,10 @@ function App() {
                 <button
                   className="btn primary full"
                   type="submit"
+                  disabled={savingPlan || !firebaseReady || planOptions.length < 2}
                 >
-                  CREAR PLAN <ArrowRight size={18} />
+                  {savingPlan ? 'CREANDO PLAN...' : 'CREAR PLAN'}
+                  <ArrowRight size={18} />
                 </button>
               </form>
 
@@ -1362,17 +1520,21 @@ function App() {
                 </h2>
 
                 <p>
-                  Elegí restaurantes y simulá una votación.
+                  Elegí restaurantes, compartí el enlace y voten desde sus celulares.
                 </p>
 
                 <p className="fineprint">
-                  Los votos de esta versión todavía se guardan
-                  localmente y no se sincronizan entre dispositivos.
+                  Los planes y los votos se guardan en Firebase
+                  y se actualizan en tiempo real.
                 </p>
               </aside>
             </div>
 
-            {plans.length > 0 && (
+            {plansLoading && (
+              <p role="status">Cargando tus planes...</p>
+            )}
+
+            {!plansLoading && plans.length > 0 && (
               <div className="saved-plans">
                 <h2>TUS PLANES</h2>
 
@@ -1380,14 +1542,18 @@ function App() {
                   <button
                     key={p.id}
                     onClick={() => {
-                      setActivePlan(p.id)
                       navigate('vote')
+                      setActivePlan(p.id)
+                      window.history.replaceState(
+                        {},
+                        '',
+                        `${window.location.pathname}?plan=${encodeURIComponent(p.id)}`
+                      )
                     }}
                   >
                     <strong>{p.name}</strong>
                     <span>
-                      {p.votes.length} votos ·
-                      {' '}{p.closed ? 'Cerrado' : 'Abierto'}
+                      {p.closed ? 'Votación cerrada' : 'Votación abierta'}
                     </span>
                     <ArrowRight size={18} />
                   </button>
@@ -1397,88 +1563,61 @@ function App() {
           </section>
         )}
 
-        {/* VOTACIÓN: DEMO LOCAL */}
+        {/* VOTACIÓN COMPARTIDA: FIRESTORE EN TIEMPO REAL */}
         {page === 'vote' && (
           <section className="section page-section vote-page">
-            <button
-              className="back"
-              onClick={() => navigate('plans')}
-            >
+            <button className="back" onClick={() => navigate('plans')}>
               <ArrowLeft size={18} /> VOLVER A PLANES
             </button>
 
-            {!currentPlan ? (
+            {planLoading || !userId ? (
+              <div className="empty" role="status">
+                <span>⏳</span>
+                <h2>Cargando la votación...</h2>
+              </div>
+            ) : planError ? (
+              <div className="empty" role="alert">
+                <span>⚠️</span>
+                <h2>No pudimos abrir el plan</h2>
+                <p>Firebase: {planError}</p>
+                <p>Revisá las reglas de Firestore y el enlace compartido.</p>
+              </div>
+            ) : !currentPlan ? (
               <div className="empty">
-                <h2>
-                  Este plan no está disponible
-                  en este navegador.
-                </h2>
-
-                <p>
-                  Para compartir votaciones reales
-                  necesitamos conectar los planes a Firestore.
-                </p>
-
-                <button
-                  className="btn primary"
-                  onClick={() => navigate('plans')}
-                >
-                  CREAR PLAN
+                <h2>Este plan no existe o ya no está disponible.</h2>
+                <button className="btn primary" onClick={() => navigate('plans')}>
+                  CREAR UN PLAN
                 </button>
               </div>
             ) : (
               <>
-                <span className="eyebrow">
-                  LA BANDA DECIDE
-                </span>
-
+                <span className="eyebrow">LA BANDA DECIDE</span>
                 <h1 className="page-title">
                   ¿DÓNDE <em>MORFAMOS?</em>
                 </h1>
-
                 <p className="intro-text">
-                  {currentPlan.name} ·
-                  {' '}{currentPlan.closed
-                    ? 'Votación cerrada'
-                    : 'Elegí tu favorito'}
+                  {currentPlan.name} ·{' '}
+                  {currentPlan.closed ? 'Votación cerrada' : 'Elegí tu favorito'}
                 </p>
 
                 <div className="two-col">
-                  <form
-                    className="form-card"
-                    onSubmit={vote}
-                  >
+                  <form className="form-card" onSubmit={vote}>
                     <h2>VOTÁ TU FAVORITO</h2>
-
                     <div className="vote-options">
                       {currentPlan.options.map(id => {
-                        const r = restaurants.find(
-                          item => item.id === id
-                        )
-
-                        const alreadyVoted = !!localStorage.getItem(
-                          `morf-voted-${currentPlan.id}`
-                        )
-
+                        const r = restaurants.find(item => item.id === id)
                         return (
                           <button
                             type="button"
                             key={id}
-                            disabled={
-                              currentPlan.closed || alreadyVoted
-                            }
-                            className={
-                              voterChoice === id ? 'chosen' : ''
-                            }
+                            disabled={currentPlan.closed || alreadyVoted || savingVote}
+                            className={voterChoice === id ? 'chosen' : ''}
                             onClick={() => setVoterChoice(id)}
                           >
-                            <span>{r?.emoji}</span>
-                            <strong>{r?.name}</strong>
-                            <small>{r?.zone}</small>
-
-                            {voterChoice === id
-                              ? <Check />
-                              : <ArrowUpRight />}
+                            <span>{r?.emoji ?? '🍽️'}</span>
+                            <strong>{r?.name ?? 'Restaurante'}</strong>
+                            <small>{r?.zone ?? ''}</small>
+                            {voterChoice === id ? <Check /> : <ArrowUpRight />}
                           </button>
                         )
                       })}
@@ -1487,125 +1626,103 @@ function App() {
                     <label>
                       TU NOMBRE
                       <input
+                        required
+                        maxLength={60}
                         value={voterName}
-                        disabled={
-                          currentPlan.closed ||
-                          !!localStorage.getItem(
-                            `morf-voted-${currentPlan.id}`
-                          )
-                        }
-                        onChange={e =>
-                          setVoterName(e.target.value)
-                        }
+                        disabled={currentPlan.closed || alreadyVoted || savingVote}
+                        onChange={e => setVoterName(e.target.value)}
                         placeholder="¿Cómo te llamás?"
                       />
                     </label>
+
+                    {alreadyVoted && (
+                      <p role="status">¡Ya votaste! Tu elección quedó guardada.</p>
+                    )}
 
                     <button
                       className="btn primary full"
                       type="submit"
                       disabled={
                         currentPlan.closed ||
-                        !!localStorage.getItem(
-                          `morf-voted-${currentPlan.id}`
-                        )
+                        alreadyVoted ||
+                        savingVote ||
+                        !voterChoice ||
+                        !voterName.trim()
                       }
                     >
                       {currentPlan.closed
                         ? 'VOTACIÓN CERRADA'
-                        : localStorage.getItem(
-                            `morf-voted-${currentPlan.id}`
-                          )
+                        : alreadyVoted
                           ? 'YA VOTASTE'
-                          : 'ENVIAR MI VOTO'}
-
+                          : savingVote
+                            ? 'ENVIANDO VOTO...'
+                            : 'ENVIAR MI VOTO'}
                       <Vote size={18} />
                     </button>
                   </form>
 
                   <aside className="results-panel">
                     <h2>ASÍ VIENE LA VOTACIÓN</h2>
-
                     {currentPlan.options.map(id => {
-                      const r = restaurants.find(
-                        item => item.id === id
-                      )
-
+                      const r = restaurants.find(item => item.id === id)
                       const count = currentPlan.votes.filter(
                         v => v.restaurantId === id
                       ).length
-
                       const percent = currentPlan.votes.length
-                        ? count / currentPlan.votes.length * 100
+                        ? (count / currentPlan.votes.length) * 100
                         : 0
 
                       return (
-                        <div
-                          className="vote-result"
-                          key={id}
-                        >
+                        <div className="vote-result" key={id}>
                           <div>
-                            <strong>{r?.name}</strong>
-                            <span>
-                              {count} {count === 1 ? 'voto' : 'votos'}
-                            </span>
+                            <strong>{r?.name ?? 'Restaurante'}</strong>
+                            <span>{count} {count === 1 ? 'voto' : 'votos'}</span>
                           </div>
-
                           <div className="bar">
-                            <span
-                              style={{ width: `${percent}%` }}
-                            />
+                            <span style={{ width: `${percent}%` }} />
                           </div>
                         </div>
                       )
                     })}
 
-                    <p>
-                      {currentPlan.votes.length} votos
-                      en este navegador
-                    </p>
+                    <p>{currentPlan.votes.length} votos en total · en tiempo real</p>
 
                     <button
                       className="btn outline full"
+                      type="button"
                       onClick={async () => {
-                        const url =
-                          `${window.location.origin}` +
-                          `${window.location.pathname}` +
-                          `?plan=${currentPlan.id}`
-
+                        const url = new URL('https://morf-gamma.vercel.app/')
+                        url.searchParams.set('plan', currentPlan.id)
                         try {
-                          await navigator.clipboard.writeText(url)
-                          notify('Enlace copiado (demo local).')
+                          await navigator.clipboard.writeText(url.toString())
+                          notify('¡Enlace copiado! Compartilo con la banda.')
                         } catch {
-                          notify('No se pudo copiar el enlace.')
+                          window.prompt('Copiá este enlace:', url.toString())
                         }
                       }}
                     >
                       <Share2 size={17} /> COPIAR ENLACE
                     </button>
 
-                    <button
-                      className="btn dark full"
-                      disabled={currentPlan.closed}
-                      onClick={() => {
-                        setPlans(prev =>
-                          prev.map(p =>
-                            p.id === currentPlan.id
-                              ? { ...p, closed: true }
-                              : p
-                          )
-                        )
-
-                        notify('Votación cerrada en esta demo.')
-                      }}
-                    >
-                      CERRAR VOTACIÓN <Check size={17} />
-                    </button>
+                    {isPlanOwner && (
+                      <button
+                        className="btn dark full"
+                        type="button"
+                        disabled={currentPlan.closed || closingPlan}
+                        onClick={closePlan}
+                      >
+                        {currentPlan.closed
+                          ? 'VOTACIÓN CERRADA'
+                          : closingPlan
+                            ? 'CERRANDO...'
+                            : 'CERRAR VOTACIÓN'}
+                        <Check size={17} />
+                      </button>
+                    )}
 
                     <p className="fineprint">
-                      El enlace no permite votar desde otros
-                      dispositivos hasta integrar los planes
-                      con Firebase.
+                      Los votos se sincronizan entre dispositivos mediante Firebase.
+                      Cada sesión anónima puede votar una sola vez por plan.
                     </p>
                   </aside>
                 </div>
