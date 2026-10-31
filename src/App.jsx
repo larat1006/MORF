@@ -105,6 +105,7 @@ function App() {
   const [activePlanData, setActivePlanData] = useState(null)
   const [planVotes, setPlanVotes] = useState([])
   const [plansLoading, setPlansLoading] = useState(true)
+  const [plansError, setPlansError] = useState('')
   const [planLoading, setPlanLoading] = useState(false)
   const [planError, setPlanError] = useState('')
   const [savingPlan, setSavingPlan] = useState(false)
@@ -288,7 +289,7 @@ useEffect(() => {
   }
 }, [userId, activePlan])
 
-  // Recuperar enlace de un plan de la demo.
+  // Recuperar enlace de un plan compartido de Firestore.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const id = params.get('plan')
