@@ -19,7 +19,8 @@ import {
   onSnapshot,
   query,
   where,
-  setDoc
+  setDoc,
+  getDoc
 } from 'firebase/firestore'
 
 const load = (key, fallback) => {
@@ -51,6 +52,22 @@ const today = () => {
     String(d.getMonth() + 1).padStart(2, '0'),
     String(d.getDate()).padStart(2, '0')
   ].join('-')
+}
+
+const APP_VERSION = 'v2.1 · Firebase'
+
+const firebaseMessage = error => {
+  const code = error?.code || 'error-desconocido'
+  if (code === 'permission-denied') return 'Permisos insuficientes. Revisá las reglas de Firestore.'
+  if (code === 'unauthenticated') return 'No se pudo autenticar la sesión anónima.'
+  if (code === 'unavailable') return 'Firebase no está disponible. Revisá tu conexión.'
+  return `${code}: ${error?.message || 'Error sin detalles'}`
+}
+
+const sharedPlanUrl = id => {
+  const url = new URL(window.location.href)
+  url.searchParams.set('plan', id)
+  return url.toString()
 }
 
 const times = [
@@ -226,11 +243,12 @@ useEffect(() => {
         data.sort((a, b) => b.createdAt - a.createdAt)
       )
       setPlansLoading(false)
+      setPlansError('')
     },
     error => {
       console.error('Error leyendo planes:', error)
       setPlansLoading(false)
-      notify('No se pudieron cargar los planes.')
+      setPlansError(firebaseMessage(error))
     }
   )
 
@@ -467,6 +485,11 @@ const submitPlan = async event => {
       }
     )
 
+    // Verificamos la lectura antes de anunciar que el plan fue creado.
+    const comprobacion = await getDoc(nuevoPlan)
+    if (!comprobacion.exists()) {
+      throw new Error('El plan se escribió pero no pudo leerse en Firestore.')
+    }
     setActivePlan(nuevoPlan.id)
     window.history.replaceState(
       {},
@@ -478,10 +501,12 @@ const submitPlan = async event => {
     setVoterChoice('')
 
     navigate('vote')
-    notify('¡Plan creado! Ya podés compartirlo.')
+    setPlansError('')
+    notify('¡Plan verificado en Firestore! Ya podés compartirlo.')
   } catch (error) {
     console.error('Error creando plan:', error)
-    notify('No se pudo crear el plan.')
+    setPlansError(firebaseMessage(error))
+    notify(`No se pudo crear el plan: ${firebaseMessage(error)}`)
   } finally {
     setSavingPlan(false)
   }
@@ -536,7 +561,7 @@ const vote = async event => {
     notify('¡Tu voto quedó registrado en Firebase!')
   } catch (error) {
     console.error('Error registrando voto:', error)
-    notify('No se pudo registrar el voto o ya habías votado.')
+    notify(`No se pudo registrar el voto: ${firebaseMessage(error)}`)
   } finally {
     setSavingVote(false)
   }
@@ -559,7 +584,7 @@ const closePlan = async () => {
     notify('Votación cerrada correctamente.')
   } catch (error) {
     console.error('Error cerrando plan:', error)
-    notify('No se pudo cerrar la votación.')
+    notify(`No se pudo cerrar la votación: ${firebaseMessage(error)}`)
   } finally {
     setClosingPlan(false)
   }
@@ -1531,6 +1556,16 @@ const closePlan = async () => {
               </aside>
             </div>
 
+            {plansError && (
+              <p role="alert" style={{ color: '#c63816', fontWeight: 700 }}>
+                Error de Firestore: {plansError}
+              </p>
+            )}
+
+            {firebaseError && (
+              <p role="alert">Error de autenticación: {firebaseError}</p>
+            )}
+
             {plansLoading && (
               <p role="status">Cargando tus planes...</p>
             )}
@@ -1692,8 +1727,7 @@ const closePlan = async () => {
                       className="btn outline full"
                       type="button"
                       onClick={async () => {
-                        const url = new URL('https://morf-gamma.vercel.app/')
-                        url.searchParams.set('plan', currentPlan.id)
+                        const url = sharedPlanUrl(currentPlan.id)
                         try {
                           await navigator.clipboard.writeText(url.toString())
                           notify('¡Enlace copiado! Compartilo con la banda.')
@@ -1743,7 +1777,7 @@ const closePlan = async () => {
 
         <div className="footer-bottom">
           <span>
-            Hecho con hambre en Buenos Aires · Proyecto académico
+            Hecho con hambre en Buenos Aires · Proyecto académico · {APP_VERSION}
           </span>
           <span>© MORF. 2026</span>
         </div>
