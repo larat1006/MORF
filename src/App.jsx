@@ -679,7 +679,13 @@ const closePlan = async () => {
       </div>
     ) : (
       <div className="empty">
-        <span>🍽️</span>
+        
+<img
+  src="/images/sin-resultados-morf.png"
+  alt=""
+  className="sin-resultados-morf-img"
+/>
+
         <h3>No encontramos coincidencias</h3>
         <p>Probá con otros filtros.</p>
       </div>
@@ -1048,7 +1054,7 @@ const closePlan = async () => {
                   SALÍ A <em>MORFAR.</em>
                 </h1>
               </div>
-              <p>Encontrá tu próximo lugar favorito.</p>
+              
             </div>
 
             <div className="filters">
@@ -1412,7 +1418,13 @@ const closePlan = async () => {
               </div>
             ) : bookings.length === 0 ? (
               <div className="empty">
-                <span>📅</span>
+                
+<img
+  src="/images/calendario-morf.png"
+  alt=""
+  className="calendario-morf-img"
+/>
+
                 <h3>Todavía no tenés reservas</h3>
                 <p>¿Buscamos un lugar para salir?</p>
 
@@ -1680,7 +1692,13 @@ const closePlan = async () => {
               </form>
 
               <aside className="side-note">
-                <span>🗳️</span>
+                
+<img
+  src="/images/grupo-decide.png"
+  alt="Urna de votación con opciones gastronómicas"
+  className="grupo-decide-img"
+/>
+
 
                 <h2>
                   EL GRUPO<br />DECIDE.

@@ -749,3 +749,106 @@
   transform: scale(0.79) rotate(-5deg);
 }
 
+/* MORF - ILUSTRACION EL GRUPO DECIDE */
+
+.grupo-decide-img {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 8px 12px rgba(30, 64, 137, 0.12));
+  animation: grupoDecideFloat 5s ease-in-out infinite;
+}
+
+@keyframes grupoDecideFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@media (max-width: 700px) {
+  .grupo-decide-img {
+    width: 180px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grupo-decide-img {
+    animation: none;
+  }
+}
+
+
+/* MORF - CALENDARIO 3D MIS RESERVAS */
+
+.calendario-morf-img {
+  display: block;
+  width: 150px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto 18px;
+  animation: calendarioFloat 5s ease-in-out infinite;
+}
+
+@keyframes calendarioFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@media (max-width: 700px) {
+  .calendario-morf-img {
+    width: 120px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendario-morf-img {
+    animation: none;
+  }
+}
+
+/* MORF - ILUSTRACION SIN RESULTADOS */
+
+.sin-resultados-morf-img {
+  display: block;
+  width: 150px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto 20px;
+  animation: sinResultadosFloat 5s ease-in-out infinite;
+}
+
+@keyframes sinResultadosFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+@media (max-width: 700px) {
+  .sin-resultados-morf-img {
+    width: 120px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sin-resultados-morf-img {
+    animation: none;
+  }
+}
