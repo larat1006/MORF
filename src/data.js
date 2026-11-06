@@ -70,7 +70,9 @@ export const restaurants = [
     rating: '—',
     tags: ['cita', 'amigos'],
     description: 'Pastas y cocina italiana en un ambiente contemporáneo.',
-    photo: 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1100&q=80'
+    
+photo: 'https://images.unsplash.com/photo-1556761223-4c4282c73f77?auto=format&fit=crop&w=1100&q=80'
+
   },
   {
     id: 'ninogordo',
@@ -130,7 +132,9 @@ export const restaurants = [
     rating: '—',
     tags: ['amigos', 'celebración'],
     description: 'Trattoria de estilo tradicional, ideal para ir en grupo.',
-    photo: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=1100&q=80'
+    
+photo: 'https://images.unsplash.com/photo-1608897013039-887f21d8c804?auto=format&fit=crop&w=1100&q=80'
+
   },
   {
     id: 'creador',
@@ -142,7 +146,9 @@ export const restaurants = [
     rating: '—',
     tags: ['amigos', 'celebración'],
     description: 'Parrilla argentina para disfrutar de una comida con amigos.',
-    photo: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1100&q=80'
+    
+photo: 'https://images.unsplash.com/photo-1558030006-450675393462?auto=format&fit=crop&w=1100&q=80'
+
   },
   {
     id: 'quotidiano',
@@ -154,7 +160,9 @@ export const restaurants = [
     rating: '—',
     tags: ['cita', 'amigos'],
     description: 'Cocina italiana, pastas y un ambiente informal.',
-    photo: 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?auto=format&fit=crop&w=1100&q=80'
+    
+photo: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=1100&q=80'
+
   }
 ]
 

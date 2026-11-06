@@ -54,7 +54,7 @@ const today = () => {
   ].join('-')
 }
 
-const APP_VERSION = 'v2.1 · Firebase'
+const APP_VERSION = 'v3 · Diseño gastronómico'
 
 const firebaseMessage = error => {
   const code = error?.code || 'error-desconocido'
@@ -782,19 +782,107 @@ const closePlan = async () => {
                 </div>
               </div>
 
-              <div className="hero-art" aria-hidden="true">
-                <span className="art-orbit orbit-one"></span>
-                <span className="art-orbit orbit-two"></span>
-                <div className="food food-one">🍝</div>
-                <div className="food food-two">🍣</div>
-                <div className="food food-three">🍕</div>
-                <div className="food food-four">🥑</div>
-                <span className="doodle doodle-one">✳</span>
-                <span className="doodle doodle-two">✦</span>
-                <span className="art-sticker">
-                  ¡QUÉ<br />HAMBRE!
-                </span>
-              </div>
+              
+<div className="hero-art hero-collage" aria-hidden="true">
+
+  {/* MANCHAS DE COLOR */}
+  <div className="collage-blob blob-yellow"></div>
+  <div className="collage-blob blob-green"></div>
+  <div className="collage-blob blob-pink"></div>
+
+  {/* FOTOGRAFIAS */}
+  <img
+    className="collage-food collage-ramen"
+    src="https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=85"
+    alt=""
+  />
+
+  <img
+    className="collage-food collage-pizza"
+    src="https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=900&q=85"
+    alt=""
+  />
+
+  <img
+    className="collage-food collage-pasta"
+    src="https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=900&q=85"
+    alt=""
+  />
+
+  <img
+    className="collage-food collage-sushi"
+    src="https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=700&q=85"
+    alt=""
+  />
+
+  {/* ESTRELLA AZUL */}
+  <svg
+    className="collage-star"
+    viewBox="0 0 100 100"
+    fill="none"
+  >
+    <path
+      d="M50 2 L61 36 L94 20 L73 49 L99 67 L65 65 L58 99 L43 67 L10 83 L30 53 L1 35 L37 37 Z"
+      fill="#1e4089"
+    />
+  </svg>
+
+  {/* RAYOS AMARILLOS */}
+  <svg
+    className="collage-rays rays-yellow"
+    viewBox="0 0 130 110"
+    fill="none"
+  >
+    <path
+      d="M65 8 V37 M24 24 L43 44 M7 66 L36 67 M106 24 L87 44 M123 66 L94 67"
+      stroke="#f7c84b"
+      strokeWidth="8"
+      strokeLinecap="round"
+    />
+  </svg>
+
+  {/* RAYOS AZULES */}
+  <svg
+    className="collage-rays rays-blue"
+    viewBox="0 0 130 110"
+    fill="none"
+  >
+    <path
+      d="M65 8 V37 M24 24 L43 44 M7 66 L36 67 M106 24 L87 44 M123 66 L94 67"
+      stroke="#1e4089"
+      strokeWidth="8"
+      strokeLinecap="round"
+    />
+  </svg>
+
+  {/* FLECHA DIBUJADA A MANO */}
+  <svg
+    className="collage-arrow"
+    viewBox="0 0 220 150"
+    fill="none"
+  >
+    <path
+      d="M10 15 C100 -5 0 100 95 115 C130 122 155 110 195 95"
+      stroke="#1e4089"
+      strokeWidth="5"
+      strokeLinecap="round"
+    />
+    <path
+      d="M170 78 L198 95 L175 117"
+      stroke="#1e4089"
+      strokeWidth="5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+
+  {/* STICKER */}
+  <span className="collage-sticker">
+    ¡QUÉ<br />HAMBRE!
+  </span>
+
+</div>
+
             </section>
 
             <div className="ticker">
@@ -804,42 +892,89 @@ const closePlan = async () => {
               </div>
             </div>
 
-            <section className="section categories">
-              <div className="section-heading">
-                <div>
-                  <span className="eyebrow">
-                    PARA TODOS LOS ANTOJOS
-                  </span>
-                  <h2>
-                    ¿QUÉ SE TE <em>ANTOJA?</em>
-                  </h2>
-                </div>
-                <p>Elegí una categoría y arrancá por ahí.</p>
-              </div>
+            
+<section className="section categories morf-categories">
 
-              <div className="category-grid">
-                {[
-                  { name: 'Hamburguesas', icon: '🍔' },
-                  { name: 'Pizzas', icon: '🍕' },
-                  { name: 'Pastas', icon: '🍝' },
-                  { name: 'Asiática', icon: '🍜' },
-                  { name: 'Parrilla', icon: '🥩' },
-                  { name: 'Argentina', icon: '🍽️' }
-                ].map(c => (
-                  <button
-                    key={c.name}
-                    onClick={() => {
-                      setCuisine(c.name)
-                      navigate('explore')
-                    }}
-                  >
-                    <span>{c.icon}</span>
-                    {c.name}
-                    <ArrowUpRight size={18} />
-                  </button>
-                ))}
-              </div>
-            </section>
+  <div className="section-heading">
+    <div>
+      <span className="eyebrow">
+        PARA TODOS LOS ANTOJOS
+      </span>
+
+      <h2>
+        ¿QUÉ SE TE <em>ANTOJA?</em>
+      </h2>
+    </div>
+  </div>
+
+  <div className="category-grid morf-category-grid">
+    {[
+      {
+        name: 'Hamburguesas',
+        image: '/images/categoria-hamburguesas.png'
+      },
+      {
+        name: 'Pizzas',
+        image: '/images/categoria-pizzas.png'
+      },
+      {
+        name: 'Pastas',
+        image: '/images/categoria-pastas.png'
+      },
+      {
+        name: 'Asiática',
+        image: '/images/categoria-asiatica.png'
+      },
+      {
+        name: 'Parrilla',
+        image: '/images/categoria-parrilla.png'
+      }
+    ].map(c => (
+      <button
+        type="button"
+        className="morf-category-card"
+        key={c.name}
+        onClick={() => {
+          setCuisine(c.name)
+          navigate('explore')
+        }}
+      >
+        <span className="category-spark" aria-hidden="true">
+          ✳
+        </span>
+
+        <span className="category-image-wrap">
+          <img
+            src={c.image}
+            alt=""
+            className="category-food-image"
+          />
+        </span>
+
+        <span className="category-card-bottom">
+          <span className="category-name">
+            {c.name}
+          </span>
+
+          <ArrowUpRight size={24} />
+        </span>
+      </button>
+    ))}
+  </div>
+
+  <div className="category-bottom-message">
+    <span className="category-accent" aria-hidden="true">
+      ✳
+    </span>
+
+    <p>Elegí una categoría y arrancá por ahí.</p>
+
+    <span className="category-accent" aria-hidden="true">
+      ✳
+    </span>
+  </div>
+
+</section>
 
             <section className="section featured">
               <div className="section-heading">
@@ -888,9 +1023,15 @@ const closePlan = async () => {
                 </button>
               </div>
 
-              <div className="banner-illustration" aria-hidden="true">
-                🗳️<span>🍔</span><span>🍜</span>
-              </div>
+              
+<div className="banner-illustration morf-character" aria-hidden="true">
+  <img
+    src="/images/personaje-morf.png"
+    alt=""
+    className="morf-character-img"
+  />
+</div>
+
             </section>
           </>
         )}
