@@ -9,6 +9,8 @@ import {
 import { restaurants, cuisines, zones } from './data'
 import { auth, db } from './firebase'
 import { iniciarSesionAnonima } from './anonymousAuth'
+import { observarSesion, cerrarSesion, mensajeErrorAuth } from './accountAuth'
+import AuthForm from './AuthForm'
 
 import {
   collection,
@@ -54,7 +56,7 @@ const today = () => {
   ].join('-')
 }
 
-const APP_VERSION = 'v3 · Diseño gastronómico'
+const APP_VERSION = 'v4 · Cuentas opcionales'
 
 const firebaseMessage = error => {
   const code = error?.code || 'error-desconocido'
@@ -116,7 +118,7 @@ function App() {
   const [zone, setZone] = useState('Todas')
   const [price, setPrice] = useState('Todos')
 
-  const [favorites, setFavorites] = useState(() => load('favorites', []))
+  const [favorites, setFavorites] = useState([])
   const [bookings, setBookings] = useState([])
   const [plans, setPlans] = useState([])
   const [activePlanData, setActivePlanData] = useState(null)
@@ -129,6 +131,10 @@ function App() {
   const [savingVote, setSavingVote] = useState(false)
   const [closingPlan, setClosingPlan] = useState(false)
   const [userId, setUserId] = useState(null)
+  const [sessionUser, setSessionUser] = useState(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
+  const [accountReturnPage, setAccountReturnPage] = useState('home')
+  const [authReason, setAuthReason] = useState('')
 
   const [activePlan, setActivePlan] = useState(null)
   const [quizStep, setQuizStep] = useState(0)
@@ -159,73 +165,120 @@ function App() {
   const [voterName, setVoterName] = useState('')
   const [voterChoice, setVoterChoice] = useState('')
 
-  // FAVORITOS Y PLANES: almacenamiento local de la demo.
-  useEffect(() => {
-    localStorage.setItem('morf-favorites', JSON.stringify(favorites))
-  }, [favorites])
+  // Los favoritos son locales, pero separados por cuenta registrada.
+  // No mostramos favoritos de otra persona al cambiar de sesión.
 
   
 
-  // FIREBASE: iniciar sesión anónima y escuchar reservas.
+  // La sesión puede ser invitada o registrada. Escuchamos cada cambio de cuenta.
   useEffect(() => {
     let active = true
-    let unsubscribe = () => {}
-
-    iniciarSesionAnonima()
-      .then(user => {
-        if (!active) return
-
-        setFirebaseReady(true)
-        setUserId(user.uid)
-        setFirebaseError('')
-
-        const reservasQuery = query(
-          collection(db, 'reservas'),
-          where('userId', '==', user.uid)
-        )
-
-        unsubscribe = onSnapshot(
-          reservasQuery,
-          snapshot => {
-            if (!active) return
-
-            const reservas = snapshot.docs.map(item => ({
-              id: item.id,
-              ...item.data()
-            }))
-
-            setBookings(reservas)
-            setBookingsLoading(false)
-            setFirebaseError('')
-          },
-          error => {
-            console.error('Error leyendo reservas:', error)
-            if (!active) return
-            setFirebaseError(error.code || error.message)
-            setBookingsLoading(false)
-          }
-        )
-      })
-      .catch(error => {
-        console.error('Error de autenticación anónima:', error)
-        if (!active) return
-
-        setFirebaseError(error.code || error.message)
-        setBookingsLoading(false)
-        setPlansLoading(false)
-      })
-
+    let unsubscribeBookings = () => {}
+    const unsubscribeAuth = observarSesion(async user => {
+      unsubscribeBookings()
+      unsubscribeBookings = () => {}
+      if (!active) return
+      if (!user) {
+        setUserId(null)
+        setSessionUser(null)
+        setFavorites([])
+        setShowFavorites(false)
+        setFirebaseReady(false)
+        setBookings([])
+        setPlans([])
+        setBookingsLoading(true)
+        setPlansLoading(true)
+        setSessionLoading(true)
+        try {
+          await iniciarSesionAnonima()
+        } catch (error) {
+          if (!active) return
+          setFirebaseError(error.code || error.message)
+          setBookingsLoading(false)
+          setPlansLoading(false)
+          setSessionLoading(false)
+        }
+        return
+      }
+      setSessionUser(user)
+      setFavorites(user.isAnonymous ? [] : load(`favorites-${user.uid}`, []))
+      setShowFavorites(false)
+      setUserId(user.uid)
+      setFirebaseReady(true)
+      setFirebaseError('')
+      setSessionLoading(false)
+      setBookings([])
+      setBookingsLoading(true)
+      unsubscribeBookings = onSnapshot(
+        query(collection(db, 'reservas'), where('userId', '==', user.uid)),
+        snapshot => {
+          if (!active || auth.currentUser?.uid !== user.uid) return
+          setBookings(snapshot.docs.map(item => ({ id: item.id, ...item.data() })))
+          setBookingsLoading(false)
+          setFirebaseError('')
+        },
+        error => {
+          if (!active) return
+          setFirebaseError(error.code || error.message)
+          setBookingsLoading(false)
+        }
+      )
+    })
     return () => {
       active = false
-      unsubscribe()
+      unsubscribeAuth()
+      unsubscribeBookings()
     }
   }, [])
 
+  const openAccount = () => {
+    setAuthReason('')
+    setAccountReturnPage(page === 'account' ? 'home' : page)
+    navigate('account')
+  }
 
-// Escuchar los planes creados por este usuario.
+  const isRegistered = !!sessionUser && !sessionUser.isAnonymous
+
+  const requireAccount = (action, returnPage = page) => {
+    if (auth.currentUser && !auth.currentUser.isAnonymous) return true
+    setAuthReason(`Para ${action} necesitás ingresar o crear una cuenta gratuita.`)
+    setAccountReturnPage(returnPage === 'account' ? 'home' : returnPage)
+    setPage('account')
+    setMobile(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    return false
+  }
+
+  const accountSuccess = user => {
+    setSessionUser(user)
+    setAuthReason('')
+    navigate(accountReturnPage === 'account' ? 'home' : accountReturnPage)
+    notify('¡Bienvenido a MORF.!')
+  }
+
+  const logout = async () => {
+    if (!window.confirm('¿Cerrar sesión? Tus planes y reservas seguirán en tu cuenta.')) return
+    try {
+      await cerrarSesion()
+      navigate('home')
+      notify('Sesión cerrada. Podés seguir como invitado.')
+    } catch (error) {
+      notify(mensajeErrorAuth(error))
+    }
+  }
+
+  // Las cuentas anónimas se vinculan con email al registrarse, conservando el UID.
+
+  // Escuchar los planes creados por este usuario.
 useEffect(() => {
-  if (!userId) return
+  if (!userId) {
+    setPlans([])
+    setPlansLoading(true)
+    return
+  }
 
+  setPlans([])
+  setPlansLoading(true)
   const q = query(
     collection(db, 'planes'),
     where('ownerId', '==', userId)
@@ -324,6 +377,10 @@ useEffect(() => {
   }
 
   const navigate = next => {
+    if (['plans', 'bookings', 'book'].includes(next) && !requireAccount(
+      next === 'plans' ? 'crear y consultar planes' : 'hacer y consultar reservas',
+      next
+    )) return
     if (next !== 'vote' && window.location.search.includes('plan=')) {
       window.history.replaceState({}, '', window.location.pathname)
     }
@@ -358,14 +415,17 @@ useEffect(() => {
   )
 
   const toggleFavorite = id => {
-    setFavorites(prev =>
-      prev.includes(id)
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    )
+    if (!requireAccount('guardar favoritos')) return
+    const uid = auth.currentUser.uid
+    setFavorites(prev => {
+      const updated = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+      localStorage.setItem(`morf-favorites-${uid}`, JSON.stringify(updated))
+      return updated
+    })
   }
 
   const beginBooking = (restaurant, booking = null) => {
+    if (!requireAccount('reservar una mesa', 'detail')) return
     setSelected(restaurant)
     setEditingBooking(booking?.id ?? null)
 
@@ -395,6 +455,7 @@ useEffect(() => {
   // CREATE + UPDATE EN FIRESTORE.
   const saveBooking = async event => {
     event.preventDefault()
+    if (!requireAccount('confirmar una reserva', 'book')) return
 
     if (
       !selected ||
@@ -410,7 +471,8 @@ useEffect(() => {
     setSavingBooking(true)
 
     try {
-      const user = auth.currentUser ?? await iniciarSesionAnonima()
+      const user = auth.currentUser
+       if (!user || user.isAnonymous) throw new Error('Se requiere una cuenta registrada.')
 
       const data = {
         restaurantId: selected.id,
@@ -449,6 +511,7 @@ useEffect(() => {
 
   // DELETE EN FIRESTORE.
   const deleteBooking = async bookingId => {
+    if (!requireAccount('modificar tus reservas', 'bookings')) return
     if (!window.confirm('¿Eliminar esta reserva?')) return
 
     try {
@@ -463,6 +526,7 @@ useEffect(() => {
 // CREAR PLAN EN FIRESTORE.
 const submitPlan = async event => {
   event.preventDefault()
+  if (!requireAccount('crear planes', 'plans')) return
 
   if (!planName.trim() || planOptions.length < 2) {
     notify('Elegí al menos dos restaurantes.')
@@ -472,7 +536,8 @@ const submitPlan = async event => {
   setSavingPlan(true)
 
   try {
-    const user = auth.currentUser ?? await iniciarSesionAnonima()
+    const user = auth.currentUser
+       if (!user || user.isAnonymous) throw new Error('Se requiere una cuenta registrada.')
 
     const nuevoPlan = await addDoc(
       collection(db, 'planes'),
@@ -569,6 +634,7 @@ const vote = async event => {
 
 // CERRAR VOTACIÓN: solamente el creador.
 const closePlan = async () => {
+  if (!requireAccount('cerrar una votación', 'vote')) return
   if (!currentPlan || !isPlanOwner || closingPlan) return
 
   if (!window.confirm('¿Cerrar esta votación?')) return
@@ -732,6 +798,9 @@ const closePlan = async () => {
           >
             Mis reservas
           </button>
+          <button className={page === 'account' ? 'active account-mobile' : 'account-mobile'} onClick={openAccount}>
+            {sessionUser && !sessionUser.isAnonymous ? 'Mi cuenta' : 'Ingresar / Registrarse'}
+          </button>
         </nav>
 
         <button
@@ -739,6 +808,10 @@ const closePlan = async () => {
           onClick={() => navigate('explore')}
         >
           ENCONTRÁ TU MESA <ArrowUpRight size={17} />
+        </button>
+
+        <button className="account-trigger" onClick={openAccount} type="button">
+          {sessionUser && !sessionUser.isAnonymous ? 'MI CUENTA' : 'INGRESAR'}
         </button>
 
         <button
@@ -751,6 +824,28 @@ const closePlan = async () => {
       </header>
 
       <main>
+        {page === 'account' && (
+          sessionLoading ? (
+            <section className="morf-auth-page"><p role="status">Cargando sesión...</p></section>
+          ) : sessionUser && !sessionUser.isAnonymous ? (
+            <section className="morf-auth-page">
+              <div className="morf-auth-card">
+                <span className="eyebrow">TU ESPACIO EN MORF.</span>
+                <h1>¡HOLA, {sessionUser.displayName?.trim() || 'MORFADOR'}!</h1>
+                <p>Iniciaste sesión como <strong>{sessionUser.email}</strong>.</p>
+                <p>Tus reservas y planes están vinculados a esta cuenta.</p>
+                <button className="btn primary full" onClick={() => navigate('bookings')}>MIS RESERVAS</button>
+                <button className="btn outline full" onClick={() => navigate('plans')}>MIS PLANES</button>
+                <button className="btn dark full" onClick={logout}>CERRAR SESIÓN</button>
+              </div>
+            </section>
+          ) : (
+            <>
+              {authReason && <p className="morf-auth-reason" role="status">{authReason}</p>}
+              <AuthForm onSuccess={accountSuccess} onGuest={() => { setAuthReason(''); navigate('home') }} />
+            </>
+          )
+        )}
         {/* HOME */}
         {page === 'home' && (
           <>
@@ -1113,7 +1208,9 @@ const closePlan = async () => {
 
               <button
                 className={`pill ${showFavorites ? 'selected' : ''}`}
-                onClick={() => setShowFavorites(!showFavorites)}
+                onClick={() => {
+                  if (requireAccount('ver tus favoritos', 'explore')) setShowFavorites(!showFavorites)
+                }}
               >
                 <Heart size={16} /> Solo favoritos
               </button>
@@ -1215,7 +1312,7 @@ const closePlan = async () => {
         )}
 
         {/* FORMULARIO DE RESERVA */}
-        {page === 'book' && selected && (
+        {page === 'book' && isRegistered && selected && (
           <section className="section form-page">
             <button
               className="back"
@@ -1378,7 +1475,11 @@ const closePlan = async () => {
               </form>
 
               <aside className="side-note">
-                <span>🍽️</span>
+                <img
+  src="/images/sin-resultados-morf.png"
+  alt=""
+  className="reserva-plato-img"
+/>
                 <h2>
                   BUEN PLAN.<br />MEJOR MESA.
                 </h2>
@@ -1386,8 +1487,7 @@ const closePlan = async () => {
                   {selected.name} · {selected.zone}
                 </p>
                 <p>
-                  Tu reserva se guarda en Firebase y se
-                  asocia a esta sesión anónima del navegador.
+                  Tu reserva se guarda en MORF. y queda vinculada a tu cuenta para que puedas consultarla cuando quieras.
                 </p>
               </aside>
             </div>
@@ -1395,7 +1495,7 @@ const closePlan = async () => {
         )}
 
         {/* MIS RESERVAS: READ + UPDATE + DELETE */}
-        {page === 'bookings' && (
+        {page === 'bookings' && isRegistered && (
           <section className="section page-section">
             <span className="eyebrow">
               TUS PLANES CONFIRMADOS
@@ -1448,9 +1548,13 @@ const closePlan = async () => {
                       className="booking-item"
                       key={b.id}
                     >
-                      <div className="booking-icon">
-                        🎟️
-                      </div>
+                     <div className="booking-icon">
+  <img
+    src="/images/reserva-morf.png"
+    alt="Reserva confirmada"
+    className="reserva-morf-img"
+  />
+</div>
 
                       <div>
                         <span className="eyebrow">
@@ -1586,9 +1690,7 @@ const closePlan = async () => {
                       >
                         <span>{r.emoji}</span>
                         <strong>{r.name}</strong>
-                        <small>
-                          {r.cuisine} · {r.zone}
-                        </small>
+                        
                         <ArrowUpRight />
                       </button>
                     ))}
@@ -1612,7 +1714,7 @@ const closePlan = async () => {
         )}
 
         {/* CREAR PLAN: FIRESTORE */}
-        {page === 'plans' && (
+        {page === 'plans' && isRegistered && (
           <section className="section page-section">
             <span className="eyebrow">
               CON AMIGOS TODO ES MEJOR
@@ -1916,7 +2018,7 @@ const closePlan = async () => {
 
                     <p className="fineprint">
                       Los votos se sincronizan entre dispositivos mediante Firebase.
-                      Cada sesión anónima puede votar una sola vez por plan.
+                      Cada usuario puede votar una sola vez por plan.
                     </p>
                   </aside>
                 </div>

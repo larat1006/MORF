@@ -852,3 +852,55 @@
     animation: none;
   }
 }
+/* MORF. V4 — Registro e inicio de sesión */
+.morf-auth-page{min-height:65vh;display:grid;place-items:center;padding:55px 6% 85px}
+.morf-auth-card{width:min(100%,540px);padding:clamp(25px,5vw,48px);background:#f5e9d5;border-radius:30px;color:#1e4089}
+.morf-auth-card h1{font-size:clamp(38px,5vw,62px);line-height:.98;color:#f04412;margin:18px 0}
+.morf-auth-card>p{font-size:17px}
+.morf-auth-form{display:grid;gap:18px;margin-top:26px}
+.morf-auth-form label{display:grid;gap:8px;font-size:12px;font-weight:800;letter-spacing:.04em}
+.morf-auth-form input{width:100%;min-height:52px;border:2px solid #d6d8d0;border-radius:13px;background:#fffdf6;color:#1e4089;padding:12px 14px}
+.morf-auth-form input:focus-visible{outline:3px solid #1e4089;outline-offset:2px}
+.morf-auth-error{color:#a42216;font-weight:700;margin:0}
+.morf-auth-success{color:#255a34;font-weight:700;margin:0}
+.morf-auth-links{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 22px;margin-top:25px}
+.morf-auth-links button{border:0;background:none;color:#1e4089;font-weight:800;text-decoration:underline;text-underline-offset:4px;padding:5px}
+.morf-auth-links button:hover{color:#f04412}
+
+/* MORF V4 - Acceso a cuentas */
+.account-trigger{border:2px solid #1e4089;border-radius:40px;background:transparent;color:#1e4089;padding:12px 17px;font-size:12px;font-weight:800;white-space:nowrap}
+.account-trigger:hover{background:#f7c84b}
+.account-mobile{display:none!important}
+@media(max-width:1050px){.account-trigger{padding:10px 12px}}
+@media(max-width:700px){.account-trigger{display:none}.account-mobile{display:block!important}}
+
+
+/* MORF V4: aviso de acciones exclusivas para cuentas registradas */
+.morf-auth-reason {
+  width: min(545px, calc(100% - 32px));
+  margin: 28px auto -8px;
+  padding: 14px 20px;
+  border: 2px solid #1e4089;
+  border-radius: 16px;
+  background: #f7c84b;
+  color: #1e4089;
+  font-weight: 800;
+  text-align: center;
+}
+/* Ilustración del plato en la sección de reservas */
+
+.reserva-plato-img {
+  display: block;
+  width: 1epx;
+  height: 130px;
+  object-fit: contain;
+  margin-bottom: 20px;
+}
+/* MORF. V4 - Icono de Mis reservas */
+
+.reserva-morf-img {
+  display: block;
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
