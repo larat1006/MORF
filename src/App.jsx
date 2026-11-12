@@ -1674,8 +1674,8 @@ const closePlan = async () => {
                     </span>
 
                     <h1>
-                      ¡ESTO TE VA A <em>GUSTAR!</em>
-                    </h1>
+  ¡ESTO TE VA A <em className="gustar-azul">GUSTAR!</em>
+</h1>
 
                     <p>
                       Elegimos estos lugares según tus respuestas.

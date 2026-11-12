@@ -904,3 +904,7 @@
   height: 80px;
   object-fit: contain;
 }
+/* Color azul para GUSTAR en ¿Qué pinta? */
+.gustar-azul {
+  color: #21458F !important;
+}
