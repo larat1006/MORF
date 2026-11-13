@@ -208,8 +208,14 @@ function App() {
       setFirebaseError('')
       setSessionLoading(false)
       setBookings([])
-      setBookingsLoading(true)
-      unsubscribeBookings = onSnapshot(
+
+if (user.isAnonymous) {
+  setBookingsLoading(false)
+  return
+}
+
+setBookingsLoading(true)
+unsubscribeBookings = onSnapshot(
         query(collection(db, 'reservas'), where('userId', '==', user.uid)),
         snapshot => {
           if (!active || auth.currentUser?.uid !== user.uid) return
@@ -492,11 +498,27 @@ useEffect(() => {
           data
         )
       } else {
-        await addDoc(collection(db, 'reservas'), {
-          ...data,
-          createdAt: Date.now()
-        })
-      }
+  const nuevaReserva = {
+    ...data,
+    createdAt: Date.now()
+  }
+
+  const referencia = await addDoc(
+    collection(db, 'reservas'),
+    nuevaReserva
+  )
+
+  setBookings(actuales => {
+    if (actuales.some(reserva => reserva.id === referencia.id)) {
+      return actuales
+    }
+
+    return [
+      ...actuales,
+      { id: referencia.id, ...nuevaReserva }
+    ]
+  })
+}
 
       setEditingBooking(null)
       navigate('bookings')
