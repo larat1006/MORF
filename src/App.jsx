@@ -224,10 +224,15 @@ unsubscribeBookings = onSnapshot(
           setFirebaseError('')
         },
         error => {
-          if (!active) return
-          setFirebaseError(error.code || error.message)
-          setBookingsLoading(false)
-        }
+  if (!active) return
+
+  // Ignorar errores de consultas anteriores durante cambios de sesión.
+  if (auth.currentUser?.uid !== user.uid) return
+
+  console.error('Error al cargar reservas:', error)
+  setFirebaseError(error.code || error.message)
+  setBookingsLoading(false)
+}
       )
     })
     return () => {
@@ -1839,12 +1844,7 @@ const closePlan = async () => {
               </aside>
             </div>
 
-            {plansError && (
-              <p role="alert" style={{ color: '#c63816', fontWeight: 700 }}>
-                Error de Firestore: {plansError}
-              </p>
-            )}
-
+            
             {firebaseError && (
               <p role="alert">Error de autenticación: {firebaseError}</p>
             )}
