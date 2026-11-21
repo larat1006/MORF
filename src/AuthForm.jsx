@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import {
   ingresarCuenta,
   mensajeErrorAuth,
@@ -12,6 +13,7 @@ export default function AuthForm({ onSuccess, onGuest }) {
   const [nombre, setNombre] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [mostrarPassword, setMostrarPassword] = useState(false)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -103,23 +105,41 @@ export default function AuthForm({ onSuccess, onGuest }) {
           </label>
 
           {modo !== 'reset' && (
-            <label>
-              Contraseña
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete={
-                  modo === 'register'
-                    ? 'new-password'
-                    : 'current-password'
-                }
-                minLength={modo === 'register' ? 6 : undefined}
-                placeholder="Mínimo 6 caracteres"
-                required
-              />
-            </label>
-          )}
+  <label>
+    Contraseña
+    <div className="morf-password-field">
+      <input
+        type={mostrarPassword ? 'text' : 'password'}
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+        autoComplete={
+          modo === 'register'
+            ? 'new-password'
+            : 'current-password'
+        }
+        minLength={modo === 'register' ? 6 : undefined}
+        placeholder="Mínimo 6 caracteres"
+        required
+      />
+
+      <button
+        type="button"
+        className="morf-password-toggle"
+        onClick={() => setMostrarPassword(!mostrarPassword)}
+        aria-label={
+          mostrarPassword
+            ? 'Ocultar contraseña'
+            : 'Mostrar contraseña'
+        }
+        aria-pressed={mostrarPassword}
+      >
+        {mostrarPassword
+  ? <Eye size={20} />
+  : <EyeOff size={20} />}
+      </button>
+    </div>
+  </label>
+)}
 
           {error && (
             <p className="morf-auth-error" role="alert">

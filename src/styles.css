@@ -908,3 +908,87 @@
 .gustar-azul {
   color: #21458F !important;
 }
+/* MORF V5 - Google Maps */
+
+.maps-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 13px 20px;
+  background-color: #f04412;
+  color: #ffffff;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.maps-link:hover {
+  background-color: #dc5025;
+  transform: translateY(-2px);
+}
+/* MORF V5 - Mapa interactivo */
+
+.maps-section {
+  margin-top: 20px;
+}
+
+.maps-section .maps-link {
+  margin-top: 0;
+}
+
+.restaurant-map {
+  margin-top: 28px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.restaurant-map iframe {
+  display: block;
+  width: 100%;
+}
+/* MORF V5 - Mostrar y ocultar contraseña */
+
+.morf-password-field {
+  position: relative;
+  width: 100%;
+}
+
+.morf-password-field input {
+  width: 100%;
+  padding-right: 52px;
+}
+
+.morf-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+  padding: 0;
+
+  border: none;
+  background: transparent;
+  color: #21458f;
+  cursor: pointer;
+}
+
+.morf-password-toggle:hover {
+  opacity: 0.65;
+}
+
+.morf-password-toggle:focus-visible {
+  outline: 2px solid #21458f;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
