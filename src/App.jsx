@@ -1,5 +1,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
+import RestaurantMap from './RestaurantMap'
 import {
   ArrowRight, ArrowLeft, ArrowUpRight, CalendarDays, Check,
   Heart, MapPin, Menu, Search, Share2, SlidersHorizontal,
@@ -111,6 +112,8 @@ const questions = [
 ]
 
 function App() {
+  const [mapSelectedRestaurant, setMapSelectedRestaurant] = useState(null)
+  const [mapSearch, setMapSearch] = useState('')
   const [page, setPage] = useState('home')
   const [selected, setSelected] = useState(null)
   const [queryText, setQueryText] = useState('')
@@ -696,24 +699,38 @@ const closePlan = async () => {
     }
   }
 
-  const quizResults = useMemo(
-    () =>
-      [...restaurants]
-        .map(r => ({
-          r,
-          score:
-            (quizAnswers.cuisine === r.cuisine ? 4 : 0) +
-            (quizAnswers.zone === r.zone ? 3 : 0) +
-            (r.tags.includes(
-              (quizAnswers.occasion ?? '').toLowerCase()
-            ) ? 2 : 0) +
-            (quizAnswers.price === money(r.price) ? 2 : 0)
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 3)
-        .map(item => item.r),
-    [quizAnswers]
-  )
+  
+const quizResults = useMemo(() => {
+  const cuisineElegida = quizAnswers.cuisine
+
+  const restaurantesFiltrados = restaurants.filter(r => {
+    if (
+      !cuisineElegida ||
+      cuisineElegida.toLowerCase() === 'sorprendeme' ||
+      cuisineElegida.toLowerCase() === 'sorpréndeme'
+    ) {
+      return true
+    }
+
+    return r.cuisine === cuisineElegida
+  })
+
+  return restaurantesFiltrados
+    .map(r => ({
+      r,
+      score:
+        (quizAnswers.zone === r.zone ? 3 : 0) +
+        (r.tags.includes(
+          (quizAnswers.occasion ?? '').toLowerCase()
+        ) ? 2 : 0) +
+        (quizAnswers.price === money(r.price) ? 2 : 0)
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(item => item.r)
+}, [quizAnswers])
+
+  
 
   const cards = items =>
     items.length ? (
@@ -783,8 +800,16 @@ const closePlan = async () => {
         <p>Probá con otros filtros.</p>
       </div>
     )
+const mapFilteredRestaurants = restaurants.filter(restaurante => {
+  const busqueda = mapSearch.trim().toLowerCase()
 
   return (
+    restaurante.name.toLowerCase().includes(busqueda) ||
+    restaurante.zone.toLowerCase().includes(busqueda) ||
+    restaurante.cuisine.toLowerCase().includes(busqueda)
+  )
+})
+return(
     <>
       <header className="site-header">
         <button
@@ -804,6 +829,7 @@ const closePlan = async () => {
           >
             Explorar
           </button>
+        
 
           <button
             className={page === 'quiz' ? 'active' : ''}
@@ -825,6 +851,12 @@ const closePlan = async () => {
           >
             Mis reservas
           </button>
+           <button
+  className={page === 'map' ? 'active' : ''}
+  onClick={() => navigate('map')}
+>
+  Ver mapa
+</button>
           <button className={page === 'account' ? 'active account-mobile' : 'account-mobile'} onClick={openAccount}>
             {sessionUser && !sessionUser.isAnonymous ? 'Mi cuenta' : 'Ingresar / Registrarse'}
           </button>
@@ -1163,7 +1195,64 @@ const closePlan = async () => {
             </section>
           </>
         )}
+{/* MAPA DE RESTAURANTES */}
+{page === 'map' && (
+  <section className="section page-section">
 
+    <div className="section-heading">
+      <div>
+        <span className="eyebrow">
+          TODOS LOS RESTAURANTES, EN UN SOLO MAPA
+        </span>
+
+        <h1 className="page-title">
+          ¿DÓNDE <em>MORFAMOS?</em>
+        </h1>
+      </div>
+    </div>
+
+    <div className="morf-map-layout">
+
+      <aside className="morf-map-sidebar">
+        <h2>ENCONTRÁ TU PRÓXIMO MORFI</h2>
+        <p>Explorá los restaurantes de MORF.</p>
+
+       <div className="morf-map-search">
+  <input
+    type="text"
+    placeholder="Buscar restaurante, barrio o comida..."
+    value={mapSearch}
+    onChange={e => setMapSearch(e.target.value)}
+  />
+</div>
+
+        <div className="morf-map-results">
+          {mapFilteredRestaurants.map(restaurante => (
+            <button
+              key={restaurante.id}
+              type="button"
+              className="morf-map-result"
+              onClick={() => setMapSelectedRestaurant(restaurante)}
+            >
+              <strong>{restaurante.name}</strong>
+              <span>
+                {restaurante.cuisine} · {restaurante.zone}
+              </span>
+            </button>
+          ))}
+        </div>
+      </aside>
+<div className="morf-map-main">
+  <RestaurantMap
+  restaurants={mapFilteredRestaurants}
+  selectedRestaurant={mapSelectedRestaurant}
+  onSelectRestaurant={openRestaurant}
+/>
+</div>
+
+    </div>
+  </section>
+)}
         {/* EXPLORAR */}
         {page === 'explore' && (
           <section className="section page-section">
